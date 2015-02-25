@@ -185,8 +185,12 @@ final class Inflate{
 
     return Z_OK;
   }
+  
+  int inflate(int f) {
+      return inflate(f, false);
+  }
 
-  int inflate(int f){
+  int inflate(int f, boolean stop_on_block){
     int hold = 0;
 
     int r;
@@ -325,7 +329,7 @@ final class Inflate{
         this.marker = 0;       // can try inflateSync
         return Z_STREAM_ERROR;
       case BLOCKS:
-        r = this.blocks.proc(r);
+        r = this.blocks.proc(r, stop_on_block);
         if(r == Z_DATA_ERROR){
           this.mode = BAD;
           this.marker = 0;     // can try inflateSync
@@ -334,6 +338,7 @@ final class Inflate{
         if(r == Z_OK){
           r = f;
         }
+        
         if(r != Z_STREAM_END){
           return r;
         }

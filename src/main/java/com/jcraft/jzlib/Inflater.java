@@ -127,10 +127,14 @@ final public class Inflater extends ZStream{
     istate=new Inflate(this);
     return istate.inflateInit(nowrap?-w:w);
   }
+  
+  public int inflate(int f) {
+      return inflate(f, false);
+  }
 
-  public int inflate(int f){
+  public int inflate(int f, boolean stop_on_block){
     if(istate==null) return Z_STREAM_ERROR;
-    int ret = istate.inflate(f);
+    int ret = istate.inflate(f, stop_on_block);
     if(ret == Z_STREAM_END) 
       finished = true;
     return ret;
@@ -164,5 +168,9 @@ final public class Inflater extends ZStream{
 
   public boolean finished(){
     return istate.mode==12 /*DONE*/;
+  }
+  
+  public int getDataType() {
+      return istate.blocks.data_type;
   }
 }

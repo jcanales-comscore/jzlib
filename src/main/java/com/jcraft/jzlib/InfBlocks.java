@@ -70,6 +70,10 @@ final class InfBlocks{
   static final private int DRY=7;   // output remaining window bytes
   static final private int DONE=8;  // finished last block, done
   static final private int BAD=9;   // ot a data error--stuck here
+  static final private int TYPEDO=10;  // get type bits (3, including end bit)
+  static final private int DRYDO=11;   // output remaining window bytes
+  
+  int data_type;
 
   int mode;            // current inflate_block mode 
 
@@ -114,7 +118,7 @@ final class InfBlocks{
     window=new byte[w];
     end=w;
     this.check = (z.istate.wrap==0) ? false : true;
-    mode = TYPE;
+    mode = TYPEDO;
     reset();
   }
 
@@ -124,7 +128,8 @@ final class InfBlocks{
     if(mode==CODES){
       codes.free(z);
     }
-    mode=TYPE;
+    mode=TYPEDO;
+    data_type=0;
     bitk=0;
     bitb=0;
     read=write=0;
@@ -132,8 +137,12 @@ final class InfBlocks{
       z.adler.reset();
     }
   }
+  
+  int proc(int r) {
+      return proc(r, false);
+  }
 
-  int proc(int r){
+  int proc(int r, boolean stop_on_block){
     int t;              // temporary storage
     int b;              // bit buffer
     int k;              // bits in bit buffer
@@ -145,11 +154,26 @@ final class InfBlocks{
     // copy input/output information to locals (UPDATE macro restores)
     {p=z.next_in_index;n=z.avail_in;b=bitb;k=bitk;}
     {q=write;m=(int)(q<read?read-q-1:end-q);}
+    
+    data_type = 0;
+    
+    if (mode==TYPE) {
+        mode = TYPEDO;
+    }
+    if (mode==DRY) {
+        mode = DRYDO;
+    }
 
     // process input based on current state
     while(true){
       switch (mode){
-      case TYPE:
+      case TYPE:    
+          if (stop_on_block) {
+              data_type = (bitk & 7) + 128;
+              return inflate_flush(r);
+          }
+          mode = TYPEDO;
+      case TYPEDO:
 
 	while(k<(3)){
 	  if(n!=0){
@@ -273,7 +297,7 @@ final class InfBlocks{
 	q += t;  m -= t;
 	if ((left -= t) != 0)
 	  break;
-	mode = last!=0 ? DRY : TYPE;
+	mode = last!=0 ? DRYDO : TYPEDO;
 	break;
       case TABLE:
 
@@ -494,6 +518,12 @@ final class InfBlocks{
 	}
 	mode = DRY;
       case DRY:
+        if (stop_on_block) {
+            data_type = (bitk & 7) + 128;
+            return inflate_flush(r);
+        }
+        mode = DRYDO;
+      case DRYDO:
 	write=q; 
 	r=inflate_flush(r); 
 	q=write; m=(int)(q<read?read-q-1:end-q);
