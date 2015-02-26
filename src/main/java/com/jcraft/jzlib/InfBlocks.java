@@ -157,22 +157,15 @@ final class InfBlocks{
     
     data_type = 0;
     
-    if (mode==TYPE) {
-        mode = TYPEDO;
-    }
-    if (mode==DRY) {
-        mode = DRYDO;
-    }
-
     // process input based on current state
     while(true){
       switch (mode){
       case TYPE:    
+          mode = TYPEDO;
           if (stop_on_block) {
               data_type = (bitk & 7) + 128;
               return inflate_flush(r);
           }
-          mode = TYPEDO;
       case TYPEDO:
 
 	while(k<(3)){
@@ -297,7 +290,7 @@ final class InfBlocks{
 	q += t;  m -= t;
 	if ((left -= t) != 0)
 	  break;
-	mode = last!=0 ? DRYDO : TYPEDO;
+	mode = last!=0 ? DRY : TYPE;
 	break;
       case TABLE:
 
@@ -518,11 +511,11 @@ final class InfBlocks{
 	}
 	mode = DRY;
       case DRY:
-        if (stop_on_block) {
+        mode = DRYDO;  
+          if (stop_on_block) {
             data_type = (bitk & 7) + 128;
             return inflate_flush(r);
         }
-        mode = DRYDO;
       case DRYDO:
 	write=q; 
 	r=inflate_flush(r); 
